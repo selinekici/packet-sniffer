@@ -1,0 +1,33 @@
+
+/build/
+/cmake-build-*/
+
+
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+
+*.o
+*.out
+*.a
+*.so
+*.exe
+
+# MacOS
+.DS_Store
+
+# Linux
+*~
+
+# VSCode
+.vscode/
+
+# CLion / JetBrains
+.idea/
+
+*.log
+
+# Test binary
+sniffer
