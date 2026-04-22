@@ -8,8 +8,8 @@
 int main(int argc, char *argv[]) {
     char err_buf[PCAP_ERRBUF_SIZE];
 
-    if (argc < 3) {
-        printf("Usage: %s <pcap_file> <out_file>\n", argv[0]);
+    if (argc < 4) {
+        printf("Usage: %s <pcap_file> <http_out_file> <flow_out_file>\n", argv[0]);
         return 1;
     }
 
@@ -22,7 +22,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    FILE *flow_file = fopen("flows.txt", "w");
+    const char *flow_out_file = argv[3];
+
+    FILE *flow_file = fopen(flow_out_file, "w");
     if (flow_file == NULL) {
         printf("Could not open flow output file.\n");
         fclose(http_file);
