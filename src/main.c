@@ -40,6 +40,15 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    if (pcap_datalink(handle) != DLT_EN10MB) {
+        printf("Unsupported link layer. Only Ethernet pcaps are supported.\n");
+        pcap_close(handle);
+        fclose(http_file);
+        fclose(flow_file);
+        return 1;
+    }
+
+
     pthread_t t2;
     if (pthread_create(&t2, NULL, consumer, http_file) != 0) {
         printf("Could not create consumer thread.\n");

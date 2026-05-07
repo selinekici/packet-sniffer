@@ -82,7 +82,15 @@ void *consumer(void *arg) {
 
 void packet_handler(unsigned char *args, const struct pcap_pkthdr *header, const unsigned char *packet) {
     (void) args;
-    (void) header;
+
+
+    if (header == NULL || packet == NULL) {
+        return;
+    }
+
+    if (header->caplen < sizeof(struct ether_header)) {
+        return;
+    }
 
     const struct ether_header *eth = (const struct ether_header *) packet;
 
@@ -93,10 +101,18 @@ void packet_handler(unsigned char *args, const struct pcap_pkthdr *header, const
 
     const struct ip *ip_header = (const struct ip *) (packet + sizeof(struct ether_header));
 
+    int ip_header_length = ip_header->ip_hl * 4;
+
+    if (ip_header_length < 20) {
+        return;
+    }
+
+    if (header->caplen < sizeof(struct ether_header) + ip_header_length) {
+        return;
+    }
+
     printf("Source IP: %s\n", inet_ntoa(ip_header->ip_src));
     printf("Destination IP: %s\n", inet_ntoa(ip_header->ip_dst));
-
-    int ip_header_length = ip_header->ip_hl * 4;
 
 
     if (ip_header->ip_p == IPPROTO_TCP) {
@@ -117,9 +133,22 @@ void packet_handler(unsigned char *args, const struct pcap_pkthdr *header, const
 
         int tcp_header_length = tcp_header->th_off * 4;
 
+        if (tcp_header_length < 20) {
+            return;
+        }
+
         int ip_total_length = ntohs(ip_header->ip_len);
 
+        if (ip_total_length < ip_header_length + tcp_header_length) {
+            return;
+        }
+
         int payload_length = ip_total_length - ip_header_length - tcp_header_length;
+
+        if (payload_length < 0) {
+            return;
+        }
+
         process_packet_flow(tuple, payload_length);
 
         printf("Payload Length: %d bytes\n", payload_length);
@@ -128,7 +157,9 @@ void packet_handler(unsigned char *args, const struct pcap_pkthdr *header, const
         int payload_offset = sizeof(struct ether_header) + ip_header_length + tcp_header_length;
         const char *payload = (const char *) (packet + payload_offset);
 
-        if (strncmp(payload, "GET", 3) == 0 || strncmp(payload, "POST", 4) == 0) {
+
+        if ((payload_length >= 3 && memcmp(payload, "GET", 3) == 0) ||
+            (payload_length >= 4 && memcmp(payload, "POST", 4) == 0)) {
             char *http_buff = malloc(4096);
             if (http_buff == NULL) {
                 perror("malloc");
