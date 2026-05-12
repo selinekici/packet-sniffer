@@ -7,7 +7,9 @@
 
 typedef struct {
     FiveTuple key;
-    int byte_count;
+    //int byte_count;
+    int payload_byte_count;
+    int packet_count;
     UT_hash_handle hh;
 } FlowEntry;
 
@@ -26,7 +28,9 @@ static FlowEntry *create_flow(FiveTuple tuple, int payload_length) {
     }
 
     entry->key = tuple;
-    entry->byte_count = payload_length;
+   //entry->byte_count = payload_length;
+    entry->payload_byte_count = payload_length;
+    entry->packet_count = 1;
     return entry;
 }
 
@@ -43,7 +47,9 @@ static void increment_packet_count(FlowEntry *entry,int payload_length) {
         return;
     }
 
-    entry->byte_count += payload_length;
+    //entry->byte_count += payload_length;
+    entry->payload_byte_count += payload_length;
+    entry->packet_count++;
 }
 
 void process_packet_flow(FiveTuple tuple, int payload_length) {
@@ -53,6 +59,12 @@ void process_packet_flow(FiveTuple tuple, int payload_length) {
         increment_packet_count(entry, payload_length);
     } else {
         FlowEntry *new_entry = create_flow(tuple, payload_length);
+        //eklendi
+        if (new_entry == NULL) {
+            fprintf(stderr, "Failed to create new flow entry.\n");
+            return;
+        }
+
         add_flow(new_entry);
     }
 }
@@ -67,17 +79,27 @@ void print_flows_to_file(FILE *out) {
     char dst_ip_str[INET_ADDRSTRLEN];
 
     HASH_ITER(hh, flows, current, tmp) {
-        inet_ntop(AF_INET, &current->key.src_ip, src_ip_str, INET_ADDRSTRLEN);
-        inet_ntop(AF_INET, &current->key.dst_ip, dst_ip_str, INET_ADDRSTRLEN);
+        //inet_ntop(AF_INET, &current->key.src_ip, src_ip_str, INET_ADDRSTRLEN);
+        //inet_ntop(AF_INET, &current->key.dst_ip, dst_ip_str, INET_ADDRSTRLEN);
+        if (inet_ntop(AF_INET, &current->key.src_ip, src_ip_str, INET_ADDRSTRLEN) == NULL) {
+            perror("inet_ntop src");
+            continue;
+        }
+
+        if (inet_ntop(AF_INET, &current->key.dst_ip, dst_ip_str, INET_ADDRSTRLEN) == NULL) {
+            perror("inet_ntop dst");
+            continue;
+        }
 
         fprintf(out,
-                "Flow -> src_ip=%s, dst_ip=%s, src_port=%u, dst_port=%u, protocol=%u, byte_count=%d\n",
+                "Flow -> src_ip=%s, dst_ip=%s, src_port=%u, dst_port=%u, protocol=%u, packet_count=%d, payload_byte_count=%d\n",
                 src_ip_str,
                 dst_ip_str,
                 ntohs(current->key.src_port),
                 ntohs(current->key.dst_port),
                 current->key.protocol,
-                current->byte_count);
+                current->packet_count,
+                current->payload_byte_count);
     }
 }
 
